@@ -100,6 +100,7 @@ class MonitoringWfhTest extends TestCase
                 'jarak_pp_km' => 13,
                 'efisiensi_km_per_liter' => 48,
                 'estimasi_bbm_liter' => 0.271,
+                'faktor_emisi_kg_per_liter' => 2.31,
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
@@ -111,6 +112,7 @@ class MonitoringWfhTest extends TestCase
                 'jarak_pp_km' => 20,
                 'efisiensi_km_per_liter' => 48,
                 'estimasi_bbm_liter' => 0.417,
+                'faktor_emisi_kg_per_liter' => 2.31,
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
@@ -203,6 +205,7 @@ class MonitoringWfhTest extends TestCase
                 'jarak_pp_km' => 13,
                 'efisiensi_km_per_liter' => 48,
                 'estimasi_bbm_liter' => 0.271,
+                'faktor_emisi_kg_per_liter' => 2.31,
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
@@ -214,6 +217,7 @@ class MonitoringWfhTest extends TestCase
                 'jarak_pp_km' => 20,
                 'efisiensi_km_per_liter' => 48,
                 'estimasi_bbm_liter' => 0.417,
+                'faktor_emisi_kg_per_liter' => 2.31,
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
@@ -238,7 +242,7 @@ class MonitoringWfhTest extends TestCase
             )
             ->assertJsonPath(
                 'data.total_pengurangan_emisi_kg',
-                1.588
+                1.589
             );
     }
 
@@ -306,6 +310,7 @@ class MonitoringWfhTest extends TestCase
                 'jarak_pp_km' => 13,
                 'efisiensi_km_per_liter' => 48,
                 'estimasi_bbm_liter' => 0.271,
+                'faktor_emisi_kg_per_liter' => 2.31,
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
@@ -317,6 +322,7 @@ class MonitoringWfhTest extends TestCase
                 'jarak_pp_km' => 20,
                 'efisiensi_km_per_liter' => 48,
                 'estimasi_bbm_liter' => 0.417,
+                'faktor_emisi_kg_per_liter' => 2.31,
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
@@ -341,7 +347,7 @@ class MonitoringWfhTest extends TestCase
             )
             ->assertJsonPath(
                 'data.total_pengurangan_emisi_kg',
-                1.588
+                1.589
             );
     }
 

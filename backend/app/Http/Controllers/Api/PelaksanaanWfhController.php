@@ -4,12 +4,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PelaksanaanWfh;
+use App\Services\PerhitunganWfhService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PelaksanaanWfhController extends Controller
 {
+    protected PerhitunganWfhService $perhitunganService;
+
+    public function __construct(PerhitunganWfhService $perhitunganService)
+    {
+        $this->perhitunganService = $perhitunganService;
+    }
+
     // Menampilkan seluruh data pelaksanaan WFH untuk Admin
     public function indexAdmin()
     {
@@ -34,7 +42,10 @@ class PelaksanaanWfhController extends Controller
             ], 404);
         }
 
-        $pelaksanaan = PelaksanaanWfh::where('pegawai_id', $pegawai->id_pegawai)
+        $pelaksanaan = PelaksanaanWfh::where(
+            'pegawai_id',
+            $pegawai->id_pegawai
+        )
             ->latest('tanggal_wfh')
             ->get();
 
@@ -45,10 +56,13 @@ class PelaksanaanWfhController extends Controller
     }
 
     // Konfirmasi realisasi WFH oleh Pegawai
-    public function konfirmasi(Request $request, $id)
+    public function konfirmasi(Request $request, int $id)
     {
-        $request->validate([
-            'status_pelaksanaan' => 'required|in:Terlaksana,Tidak Terlaksana',
+        $validated = $request->validate([
+            'status_pelaksanaan' => [
+                'required',
+                'in:Terlaksana,Tidak Terlaksana',
+            ],
         ]);
 
         $user = $request->user();
@@ -60,65 +74,120 @@ class PelaksanaanWfhController extends Controller
             ], 404);
         }
 
-        $pelaksanaan = DB::transaction(function () use ($id, $pegawai, $user, $request) {
-
-            $data = PelaksanaanWfh::where('id_pelaksanaan', $id)
+        $hasil = DB::transaction(function () use (
+            $id,
+            $pegawai,
+            $user,
+            $validated
+        ) {
+            $data = PelaksanaanWfh::where(
+                'id_pelaksanaan',
+                $id
+            )
                 ->where('pegawai_id', $pegawai->id_pegawai)
                 ->lockForUpdate()
                 ->first();
 
             if (!$data) {
-                return response()->json([
-                    'message' => 'Data pelaksanaan WFH tidak ditemukan.',
-                ], 404);
+                return [
+                    'error' => 'Data pelaksanaan WFH tidak ditemukan.',
+                    'status' => 404,
+                ];
             }
 
             if ($data->status_pelaksanaan !== 'Terjadwal') {
-                return response()->json([
-                    'message' => 'Jadwal WFH ini sudah dikonfirmasi sebelumnya.',
-                ], 422);
+                return [
+                    'error' => 'Jadwal WFH ini sudah dikonfirmasi sebelumnya.',
+                    'status' => 422,
+                ];
             }
 
-           // Konfirmasi hanya dapat dilakukan setelah tanggal WFH berakhir
-        $mulaiKonfirmasi = $data->tanggal_wfh
-            ->copy()
-            ->addDay()
-            ->startOfDay();
+            // Konfirmasi hanya dapat dilakukan setelah tanggal WFH berakhir.
+            $mulaiKonfirmasi = $data->tanggal_wfh
+                ->copy()
+                ->addDay()
+                ->startOfDay();
 
-        if (now()->lessThan($mulaiKonfirmasi)) {
-            return response()->json([
-                'message' => 'Konfirmasi hanya dapat dilakukan setelah tanggal WFH berakhir.',
-            ], 422);
-        }
+            if (now()->lessThan($mulaiKonfirmasi)) {
+                return [
+                    'error' => 'Konfirmasi hanya dapat dilakukan setelah tanggal WFH berakhir.',
+                    'status' => 422,
+                ];
+            }
 
-        // Batas akhir konfirmasi adalah pukul 23.59 pada hari berikutnya
-        $batasKonfirmasi = $data->tanggal_wfh
-            ->copy()
-            ->addDay()
-            ->endOfDay();
+            // Batas akhir konfirmasi adalah pukul 23.59 pada hari berikutnya.
+            $batasKonfirmasi = $data->tanggal_wfh
+                ->copy()
+                ->addDay()
+                ->endOfDay();
 
-        if (now()->greaterThan($batasKonfirmasi)) {
-            return response()->json([
-                'message' => 'Batas waktu konfirmasi WFH telah berakhir.',
-            ], 422);
-        }
+            if (now()->greaterThan($batasKonfirmasi)) {
+                return [
+                    'error' => 'Batas waktu konfirmasi WFH telah berakhir.',
+                    'status' => 422,
+                ];
+            }
 
-            $data->update([
-                'status_pelaksanaan' => $request->status_pelaksanaan,
+            $snapshot = [];
+
+            // Snapshot hanya dihitung jika WFH benar-benar terlaksana.
+            if ($validated['status_pelaksanaan'] === 'Terlaksana') {
+                $pegawaiData = $pegawai->fresh('kendaraan');
+                $kendaraan = $pegawaiData?->kendaraan;
+
+                $jarakKantor = (float) ($pegawaiData?->jarak_kantor_km ?? 0);
+                $efisiensi = (float) ($kendaraan?->efisiensi_km_per_liter ?? 0);
+                $jenisBbm = $kendaraan?->jenis_bbm;
+
+                $faktorEmisi = $jenisBbm
+                    ? $this->perhitunganService->ambilFaktorEmisi($jenisBbm)
+                    : null;
+
+                // Simpan snapshot hanya jika seluruh data perhitungan lengkap.
+                if (
+                    $jarakKantor > 0 &&
+                    $efisiensi > 0 &&
+                    $faktorEmisi !== null
+                ) {
+                    $jarakPulangPergi = $jarakKantor * 2;
+
+                    $bbmHemat = $this->perhitunganService
+                        ->hitungPenghematanBbm(
+                            $jarakKantor,
+                            $efisiensi,
+                            1
+                        );
+
+                    $snapshot = [
+                        'jarak_pp_km' => $jarakPulangPergi,
+                        'efisiensi_km_per_liter' => $efisiensi,
+                        'estimasi_bbm_liter' => $bbmHemat,
+                        'faktor_emisi_kg_per_liter' => $faktorEmisi,
+                    ];
+                }
+            }
+
+            $data->update(array_merge([
+                'status_pelaksanaan' => $validated['status_pelaksanaan'],
                 'tanggal_konfirmasi' => now(),
                 'dikonfirmasi_oleh' => $user->id_user,
-            ]);
+            ], $snapshot));
 
-            return $data->fresh();
+            return [
+                'data' => $data->fresh(),
+                'status' => 200,
+            ];
         });
 
-        if ($pelaksanaan instanceof \Illuminate\Http\JsonResponse) {
-            return $pelaksanaan;
+        if (isset($hasil['error'])) {
+            return response()->json([
+                'message' => $hasil['error'],
+            ], $hasil['status']);
         }
 
         return response()->json([
             'message' => 'Konfirmasi pelaksanaan WFH berhasil disimpan.',
-            'data' => $pelaksanaan,
+            'data' => $hasil['data'],
         ], 200);
     }
 }

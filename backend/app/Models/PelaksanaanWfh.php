@@ -23,6 +23,7 @@ class PelaksanaanWfh extends Model
         'jarak_pp_km',
         'efisiensi_km_per_liter',
         'estimasi_bbm_liter',
+        'faktor_emisi_kg_per_liter',
         'catatan',
     ];
 
@@ -33,7 +34,8 @@ class PelaksanaanWfh extends Model
             'tanggal_konfirmasi' => 'datetime',
             'jarak_pp_km' => 'decimal:2',
             'efisiensi_km_per_liter' => 'decimal:2',
-            'estimasi_bbm_liter' => 'decimal:2',
+            'estimasi_bbm_liter' => 'decimal:3',
+            'faktor_emisi_kg_per_liter' => 'decimal:3',
         ];
     }
 

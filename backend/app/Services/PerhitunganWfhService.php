@@ -20,6 +20,12 @@ class PerhitunganWfhService
         return isset(self::FAKTOR_EMISI[$jenisBbm]);
     }
 
+    // Mengambil faktor emisi berdasarkan jenis BBM
+    public function ambilFaktorEmisi(string $jenisBbm): ?float
+    {
+        return self::FAKTOR_EMISI[$jenisBbm] ?? null;
+    }
+
     // Menghitung estimasi penghematan BBM
     public function hitungPenghematanBbm(
         float $jarakKantorKm,
