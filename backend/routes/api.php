@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\KendaraanController;
 use App\Http\Controllers\Api\PengajuanWfhController;
 use App\Http\Controllers\Api\PelaksanaanWfhController;
 use App\Http\Controllers\Api\MonitoringWfhController;
+use App\Http\Controllers\Api\UserController;
 
 // Endpoint login
 Route::post('/login', [AuthController::class, 'login']);
@@ -44,6 +45,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/pelaksanaan-wfh', [PelaksanaanWfhController::class, 'indexAdmin']);
 
         Route::get('/admin/monitoring', [MonitoringWfhController::class, 'ringkasan']);
+
+        // Manajemen Akun Pengguna
+        Route::get('/admin/users', [UserController::class, 'index']);
+        Route::post('/admin/users', [UserController::class, 'store']);
+        Route::get('/admin/users/{id}', [UserController::class, 'show']);
+        Route::put('/admin/users/{id}', [UserController::class, 'update']);
+        Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
+        Route::patch('/admin/users/{id}/status', [UserController::class, 'updateStatus']);
     });
 
     // Endpoint khusus Pegawai
@@ -54,10 +63,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/pelaksanaan-wfh', [PelaksanaanWfhController::class, 'indexPegawai']);
 
         Route::patch('/pelaksanaan-wfh/{id}/konfirmasi', [PelaksanaanWfhController::class, 'konfirmasi'])
-        ->whereNumber('id');
+            ->whereNumber('id');
 
         Route::get('/pegawai/monitoring', [MonitoringWfhController::class, 'ringkasan']);
-});
+    });
 
     // Endpoint khusus Kepala Balai
     Route::middleware('role:Kepala Balai')->group(function () {
