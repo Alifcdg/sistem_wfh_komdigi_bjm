@@ -46,7 +46,7 @@ class GenerateFridayWfh extends Command
                     ],
                     [
                         'sumber_jadwal' => 'Otomatis',
-                        'status_pelaksanaan' => 'Terlaksana',
+                        'status_pelaksanaan' => 'Terjadwal',
                         'catatan' => 'Jadwal WFH otomatis setiap hari Jumat.',
                     ]
                 );

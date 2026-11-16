@@ -50,9 +50,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:Pegawai')->group(function () {
         Route::post('/pengajuan-wfh', [PengajuanWfhController::class, 'store']);
         Route::get('/pengajuan-wfh', [PengajuanWfhController::class, 'index']);
+
         Route::get('/pelaksanaan-wfh', [PelaksanaanWfhController::class, 'indexPegawai']);
+
+        Route::patch('/pelaksanaan-wfh/{id}/konfirmasi', [PelaksanaanWfhController::class, 'konfirmasi'])
+        ->whereNumber('id');
+
         Route::get('/pegawai/monitoring', [MonitoringWfhController::class, 'ringkasan']);
-    });
+});
 
     // Endpoint khusus Kepala Balai
     Route::middleware('role:Kepala Balai')->group(function () {

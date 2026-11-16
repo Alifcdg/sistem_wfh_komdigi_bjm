@@ -293,7 +293,7 @@ class PengajuanWfhController extends Controller
                         ],
                         [
                             'sumber_jadwal' => 'Pengajuan',
-                            'status_pelaksanaan' => 'Terlaksana',
+                            'status_pelaksanaan' => 'Terjadwal',
                         ]
                     );
                 }
