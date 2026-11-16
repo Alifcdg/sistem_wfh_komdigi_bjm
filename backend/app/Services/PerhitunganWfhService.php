@@ -14,6 +14,12 @@ class PerhitunganWfhService
         'Pertamina Dex' => 2.68,
     ];
 
+    // Memeriksa apakah jenis BBM didukung
+    public function jenisBbmDidukung(string $jenisBbm): bool
+    {
+        return isset(self::FAKTOR_EMISI[$jenisBbm]);
+    }
+
     // Menghitung estimasi penghematan BBM
     public function hitungPenghematanBbm(
         float $jarakKantorKm,

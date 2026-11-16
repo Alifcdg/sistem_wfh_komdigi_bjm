@@ -427,4 +427,52 @@ class MonitoringWfhTest extends TestCase
                 'message' => 'Anda tidak memiliki hak akses.',
             ]);
     }
+
+    public function test_unsupported_fuel_type_is_counted_as_incomplete_data(): void
+    {
+        $now = now();
+
+        // Membuat kendaraan dengan jenis BBM yang tidak didukung.
+        $kendaraanId = DB::table('kendaraans')->insertGetId([
+            'nama_kendaraan' => 'Kendaraan Pengujian',
+            'jenis_kendaraan' => 'Motor',
+            'jenis_bbm' => 'BBM Tidak Dikenal',
+            'efisiensi_km_per_liter' => 40,
+            'sumber_efisiensi' => 'Data pengujian',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        // Membuat pegawai dengan kendaraan tersebut.
+        $pegawaiId = DB::table('pegawais')->insertGetId([
+            'kendaraan_id' => $kendaraanId,
+            'nama' => 'Pegawai Pengujian',
+            'jarak_kantor_km' => 10,
+            'status_pegawai' => 'Aktif',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        // Membuat pelaksanaan WFH yang sudah terlaksana.
+        DB::table('pelaksanaan_wfhs')->insert([
+            'pegawai_id' => $pegawaiId,
+            'tanggal_wfh' => $now->startOfMonth()->addDays(1)->toDateString(),
+            'sumber_jadwal' => 'Pengajuan',
+            'status_pelaksanaan' => 'Terlaksana',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        // Mengakses monitoring publik.
+        $response = $this->getJson('/api/monitoring?' . http_build_query([
+            'tanggal_mulai' => $now->startOfMonth()->toDateString(),
+            'tanggal_selesai' => $now->endOfMonth()->toDateString(),
+        ]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.total_hari_wfh', 1)
+            ->assertJsonPath('data.jumlah_data_tidak_lengkap', 1)
+            ->assertJsonPath('data.total_penghematan_bbm_liter', 0)
+            ->assertJsonPath('data.total_pengurangan_emisi_kg', 0);
+    }
 }

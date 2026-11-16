@@ -28,14 +28,14 @@ class PegawaiController extends Controller
             'nip' => [
                 'nullable',
                 'string',
-                'max:50',
+                'max:30',
                 Rule::unique('pegawais', 'nip'),
             ],
-            'nama' => 'required|string|max:255',
-            'jabatan' => 'nullable|string|max:255',
-            'unit_kerja' => 'nullable|string|max:255',
+            'nama' => 'required|string|max:150',
+            'jabatan' => 'nullable|string|max:100',
+            'unit_kerja' => 'nullable|string|max:100',
             'alamat_rumah' => 'nullable|string',
-            'jarak_kantor_km' => 'nullable|numeric|min:0',
+            'jarak_kantor_km' => 'nullable|numeric|gt:0',
             'kendaraan_id' => 'nullable|exists:kendaraans,id_kendaraan',
             'status_pegawai' => 'required|in:Aktif,Tidak Aktif',
         ]);
@@ -62,26 +62,41 @@ class PegawaiController extends Controller
     // Memperbarui data pegawai
     public function update(Request $request, int $id)
     {
-        $pegawai = Pegawai::findOrFail($id);
-
         $validated = $request->validate([
             'nip' => [
                 'nullable',
                 'string',
-                'max:50',
+                'max:30',
                 Rule::unique('pegawais', 'nip')
-                    ->ignore($pegawai->id_pegawai, 'id_pegawai'),
+                    ->ignore($id, 'id_pegawai'),
             ],
-            'nama' => 'required|string|max:255',
-            'jabatan' => 'nullable|string|max:255',
-            'unit_kerja' => 'nullable|string|max:255',
+            'nama' => 'required|string|max:150',
+            'jabatan' => 'nullable|string|max:100',
+            'unit_kerja' => 'nullable|string|max:100',
             'alamat_rumah' => 'nullable|string',
-            'jarak_kantor_km' => 'nullable|numeric|min:0',
+            'jarak_kantor_km' => 'nullable|numeric|gt:0',
             'kendaraan_id' => 'nullable|exists:kendaraans,id_kendaraan',
             'status_pegawai' => 'required|in:Aktif,Tidak Aktif',
         ]);
 
-        $pegawai->update($validated);
+        DB::transaction(function () use ($id, $validated) {
+            $pegawai = Pegawai::whereKey($id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $pegawai->update($validated);
+
+            $statusAkun = $validated['status_pegawai'] === 'Aktif'
+                ? 'Aktif'
+                : 'Tidak Aktif';
+
+            $pegawai->user?->update([
+                'status_akun' => $statusAkun,
+            ]);
+        });
+
+        $pegawai = Pegawai::with('kendaraan')
+            ->findOrFail($id);
 
         return response()->json([
             'message' => 'Data pegawai berhasil diperbarui.',
@@ -92,29 +107,32 @@ class PegawaiController extends Controller
     // Mengubah status pegawai dan akun pengguna
     public function updateStatus(Request $request, int $id)
     {
-        $pegawai = Pegawai::findOrFail($id);
-
         $validated = $request->validate([
             'status_pegawai' => 'required|in:Aktif,Tidak Aktif',
         ]);
 
-        DB::transaction(function () use ($pegawai, $validated) {
+        DB::transaction(function () use ($id, $validated) {
+            $pegawai = Pegawai::whereKey($id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $pegawai->update($validated);
 
-            if ($pegawai->user) {
-                $statusAkun = $validated['status_pegawai'] === 'Aktif'
-                    ? 'Aktif'
-                    : 'Tidak Aktif';
+            $statusAkun = $validated['status_pegawai'] === 'Aktif'
+                ? 'Aktif'
+                : 'Tidak Aktif';
 
-                $pegawai->user->update([
-                    'status_akun' => $statusAkun,
-                ]);
-            }
+            $pegawai->user?->update([
+                'status_akun' => $statusAkun,
+            ]);
         });
+
+        $pegawai = Pegawai::with('user')
+            ->findOrFail($id);
 
         return response()->json([
             'message' => 'Status pegawai dan akun berhasil diperbarui.',
-            'data' => $pegawai->fresh()->load('user'),
+            'data' => $pegawai,
         ], 200);
     }
 }

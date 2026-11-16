@@ -9,25 +9,26 @@ class MonitoringWfhService
 {
     protected PerhitunganWfhService $perhitunganService;
 
-    public function __construct(
-        PerhitunganWfhService $perhitunganService
-    ) {
+    public function __construct(PerhitunganWfhService $perhitunganService)
+    {
         $this->perhitunganService = $perhitunganService;
     }
 
+    /**
+     * Mengambil data WFH yang sudah terlaksana
+     * berdasarkan rentang tanggal dan pegawai.
+     */
     public function ambilDataWfh(
         string $tanggalMulai,
         string $tanggalSelesai,
         ?int $pegawaiId = null
     ) {
-        $query = PelaksanaanWfh::with([
-            'pegawai.kendaraan'
-        ])
-        ->whereBetween('tanggal_wfh', [
-            $tanggalMulai,
-            $tanggalSelesai
-        ])
-        ->where('status_pelaksanaan', 'Terlaksana');
+        $query = PelaksanaanWfh::with(['pegawai.kendaraan'])
+            ->whereBetween('tanggal_wfh', [
+                $tanggalMulai,
+                $tanggalSelesai
+            ])
+            ->where('status_pelaksanaan', 'Terlaksana');
 
         if ($pegawaiId !== null) {
             $query->where('pegawai_id', $pegawaiId);
@@ -36,6 +37,9 @@ class MonitoringWfhService
         return $query->get();
     }
 
+    /**
+     * Menghitung ringkasan efisiensi WFH.
+     */
     public function hitungRingkasan(Collection $dataWfh): array
     {
         $totalHariWfh = $dataWfh->count();
@@ -47,7 +51,7 @@ class MonitoringWfhService
             $pegawai = $pelaksanaan->pegawai;
             $kendaraan = $pegawai?->kendaraan;
 
-            // Periksa kelengkapan data perhitungan
+            // Periksa kelengkapan data pegawai dan kendaraan.
             if (
                 !$pegawai ||
                 !$kendaraan ||
@@ -55,26 +59,27 @@ class MonitoringWfhService
                 !$kendaraan->efisiensi_km_per_liter ||
                 !$kendaraan->jenis_bbm ||
                 $pegawai->jarak_kantor_km <= 0 ||
-                $kendaraan->efisiensi_km_per_liter <= 0
+                $kendaraan->efisiensi_km_per_liter <= 0 ||
+                !$this->perhitunganService->jenisBbmDidukung(
+                    $kendaraan->jenis_bbm ?? ''
+                )
             ) {
                 $dataTidakLengkap++;
                 continue;
             }
 
-            // Hitung penghematan BBM
-            $bbmHemat = $this->perhitunganService
-                ->hitungPenghematanBbm(
-                    (float) $pegawai->jarak_kantor_km,
-                    (float) $kendaraan->efisiensi_km_per_liter,
-                    1
-                );
+            // Hitung estimasi penghematan BBM.
+            $bbmHemat = $this->perhitunganService->hitungPenghematanBbm(
+                (float) $pegawai->jarak_kantor_km,
+                (float) $kendaraan->efisiensi_km_per_liter,
+                1
+            );
 
-            // Hitung pengurangan emisi
-            $emisiBerkurang = $this->perhitunganService
-                ->hitungPenguranganEmisi(
-                    $bbmHemat,
-                    $kendaraan->jenis_bbm
-                );
+            // Hitung estimasi pengurangan emisi.
+            $emisiBerkurang = $this->perhitunganService->hitungPenguranganEmisi(
+                $bbmHemat,
+                $kendaraan->jenis_bbm
+            );
 
             $totalBbmHemat += $bbmHemat;
             $totalEmisiBerkurang += $emisiBerkurang;

@@ -11,7 +11,8 @@ class KendaraanController extends Controller
     // Menampilkan seluruh data kendaraan
     public function index()
     {
-        $kendaraan = Kendaraan::with('pegawais')->get();
+        $kendaraan = Kendaraan::with('pegawais:id_pegawai,nama,nip')
+            ->get();
 
         return response()->json([
             'message' => 'Data kendaraan berhasil diambil.',
@@ -23,9 +24,9 @@ class KendaraanController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nama_kendaraan' => 'required|string|max:255',
-            'jenis_kendaraan' => 'required|string|max:100',
-            'jenis_bbm' => 'nullable|string|max:100',
+            'nama_kendaraan' => 'required|string|max:100',
+            'jenis_kendaraan' => 'required|string|max:30',
+            'jenis_bbm' => 'nullable|string|max:30',
             'efisiensi_km_per_liter' => 'nullable|numeric|gt:0',
             'sumber_efisiensi' => 'nullable|string|max:255',
         ]);
@@ -41,7 +42,8 @@ class KendaraanController extends Controller
     // Menampilkan detail kendaraan berdasarkan ID
     public function show(int $id)
     {
-        $kendaraan = Kendaraan::with('pegawais')->findOrFail($id);
+        $kendaraan = Kendaraan::with('pegawais:id_pegawai,nama,nip')
+            ->findOrFail($id);
 
         return response()->json([
             'message' => 'Detail kendaraan berhasil diambil.',
@@ -55,9 +57,9 @@ class KendaraanController extends Controller
         $kendaraan = Kendaraan::findOrFail($id);
 
         $validated = $request->validate([
-            'nama_kendaraan' => 'required|string|max:255',
-            'jenis_kendaraan' => 'required|string|max:100',
-            'jenis_bbm' => 'nullable|string|max:100',
+            'nama_kendaraan' => 'required|string|max:100',
+            'jenis_kendaraan' => 'required|string|max:30',
+            'jenis_bbm' => 'nullable|string|max:30',
             'efisiensi_km_per_liter' => 'nullable|numeric|gt:0',
             'sumber_efisiensi' => 'nullable|string|max:255',
         ]);
