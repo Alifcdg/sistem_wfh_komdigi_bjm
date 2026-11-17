@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Services;
+
+class PerhitunganWfhService
+{
+    // Faktor emisi BBM (kg CO2 per liter)
+    private const FAKTOR_EMISI = [
+        'Pertalite' => 2.31,
+        'Pertamax' => 2.31,
+        'Pertamax Turbo' => 2.31,
+        'Solar' => 2.68,
+        'Dexlite' => 2.68,
+        'Pertamina Dex' => 2.68,
+    ];
+
+    // Memeriksa apakah jenis BBM didukung
+    public function jenisBbmDidukung(string $jenisBbm): bool
+    {
+        return isset(self::FAKTOR_EMISI[$jenisBbm]);
+    }
+
+    // Mengambil faktor emisi berdasarkan jenis BBM
+    public function ambilFaktorEmisi(string $jenisBbm): ?float
+    {
+        return self::FAKTOR_EMISI[$jenisBbm] ?? null;
+    }
+
+    // Menghitung estimasi penghematan BBM
+    public function hitungPenghematanBbm(
+        float $jarakKantorKm,
+        float $efisiensiKmPerLiter,
+        int $jumlahWfh
+    ): float {
+        if ($efisiensiKmPerLiter <= 0) {
+            return 0;
+        }
+
+        $jarakPulangPergi = $jarakKantorKm * 2;
+
+        $bbmHemat = ($jarakPulangPergi * $jumlahWfh)
+            / $efisiensiKmPerLiter;
+
+        return $bbmHemat;
+    }
+
+    // Menghitung estimasi pengurangan emisi CO2
+    public function hitungPenguranganEmisi(
+        float $bbmHemat,
+        string $jenisBbm
+    ): float {
+        $faktorEmisi = self::FAKTOR_EMISI[$jenisBbm] ?? null;
+
+        if ($faktorEmisi === null) {
+            return 0;
+        }
+
+        return $bbmHemat * $faktorEmisi;
+    }
+}
